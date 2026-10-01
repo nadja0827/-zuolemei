@@ -10,7 +10,7 @@
 <style>
 *{box-sizing:border-box}
 :root{
-  --blue:#78a9dc;--blue2:#edf5ff;--cream:#fbf6ec;--paper:#fffdf9;
+  --blue:#78a9dc;--blue2:#edf5ff;--cream:#f3e4cf;--paper:#fff9ef;
   --brown:#4b2e20;--line:#eadfce;--muted:#8f857b;
   --pink:#ffe1e8;--orange:#fff0dd
 }
@@ -31,7 +31,7 @@ button{cursor:pointer}
 
 /* shell */
 .app{min-height:100vh;display:grid;grid-template-columns:240px 1fr}
-aside{padding:24px 18px;background:#fffaf2;border-right:1px solid var(--line)}
+aside{padding:24px 18px;background:#f7ead7;border-right:1px solid var(--line)}
 .mini{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;margin-bottom:24px}
 .mini img{width:42px;height:42px;object-fit:contain}
 .nav button{width:100%;border:0;background:transparent;padding:11px 12px;border-radius:16px;text-align:left;margin:4px 0;font-weight:700;display:flex;align-items:center;gap:9px}
@@ -42,25 +42,17 @@ aside{padding:24px 18px;background:#fffaf2;border-right:1px solid var(--line)}
 .user{margin-top:28px;font-size:13px;color:#8c8278;word-break:break-all}
 main{padding:28px 34px;max-width:1150px;width:100%;margin:auto}
 
-/* hero: clean art + text are separate, so the illustration can never crop the title */
+/* hero: complete illustrated banner */
 .hero{
-  position:relative;min-height:235px;border-radius:30px;
-  background:linear-gradient(120deg,#fff7e9 0%,#fffaf3 48%,#fffdf9 100%);
-  border:1px solid var(--line);overflow:hidden;
-  padding:48px 36px 32px 420px;
-  box-shadow:0 10px 30px #735a3212
+  border-radius:30px;overflow:hidden;border:1px solid #dfcdb3;
+  background:#f8ead5;box-shadow:0 10px 30px #735a3218;
 }
-.heroArt{
-  position:absolute;left:18px;bottom:0;width:390px;height:225px;
-  object-fit:contain;object-position:left bottom;
-}
-.heroCopy{position:relative;z-index:2}
-.hero h1{font-size:50px;line-height:1.05;margin:8px 0 8px;color:var(--brown);font-weight:800;letter-spacing:.02em}
-.heroText{font-size:18px;line-height:1.6}
+.heroBanner{display:block;width:100%;height:auto}
+.heroBanner.mobile{display:none}
 
 /* toolbar/list */
 .toolbar{display:flex;gap:10px;margin:20px 0}
-.quick{flex:1;display:flex;background:white;border:1px solid var(--line);border-radius:18px;padding:7px 8px 7px 18px;box-shadow:0 5px 20px #6d53320d}
+.quick{flex:1;display:flex;background:#fffaf2;border:1px solid var(--line);border-radius:18px;padding:7px 8px 7px 18px;box-shadow:0 5px 20px #6d53320d}
 .quick input{flex:1;border:0;outline:0;background:transparent;font-size:18px;min-width:0}
 .primary{border:0;background:var(--blue);color:white;font-weight:800;border-radius:14px;padding:13px 20px}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:24px;overflow:hidden}
@@ -98,21 +90,13 @@ dialog::backdrop{background:#2b211b55}
 @media(max-width:760px){
   .app{display:block} aside{display:none}
   main{padding:12px 14px 100px}
-  .hero{
-    min-height:350px;padding:232px 18px 24px;text-align:center;
-    border-radius:28px;overflow:hidden
-  }
-  .heroArt{
-    width:360px;height:220px;left:50%;top:8px;bottom:auto;
-    transform:translateX(-50%);object-fit:contain;object-position:center bottom
-  }
-  .hero h1{font-size:42px;margin:2px 0 5px}
-  .hero .sub{font-size:12px}
-  .heroText{font-size:16px}
+  .hero{border-radius:26px}
+  .heroBanner.desktop{display:none}
+  .heroBanner.mobile{display:block}
   .mobiletabs{display:flex;gap:8px;overflow:auto;margin:12px 0 14px;padding:2px 0 5px;scrollbar-width:none}
   .mobiletabs::-webkit-scrollbar{display:none}
   .mobiletabs button{
-    white-space:nowrap;border:1px solid var(--line);background:#fffaf3;border-radius:20px;
+    white-space:nowrap;border:1px solid var(--line);background:#fff8ed;border-radius:20px;
     padding:8px 11px;min-width:76px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:700
   }
   .mobiletabs button.active{background:var(--blue);color:white;border-color:var(--blue)}
@@ -130,8 +114,6 @@ dialog::backdrop{background:#2b211b55}
   .task .more{grid-column:4;grid-row:2}
 }
 @media(max-width:390px){
-  .hero{min-height:338px;padding-top:220px}
-  .heroArt{width:335px;height:210px}
   .mobiletabs button{min-width:70px}
 }
 </style>
@@ -155,12 +137,8 @@ dialog::backdrop{background:#2b211b55}
   </aside>
   <main>
     <section class="hero">
-      <img class="heroArt" src="hero.png" alt="">
-      <div class="heroCopy">
-        <div class="sub">TO DO LIST</div>
-        <h1>做了沒？</h1>
-        <div class="heroText">把想做的事，一件一件完成吧！</div>
-      </div>
+      <img class="heroBanner desktop" src="hero-desktop.png?v=23" alt="TO DO LIST 做了沒？把想做的事，一件一件完成吧！">
+      <img class="heroBanner mobile" src="hero-mobile.png?v=23" alt="TO DO LIST 做了沒？把想做的事，一件一件完成吧！">
     </section>
 
     <div class="mobiletabs" id="mobiletabs"></div>
