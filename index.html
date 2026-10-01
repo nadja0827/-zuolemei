@@ -64,7 +64,7 @@ main{padding:28px 34px;max-width:1150px;width:100%;margin:auto}
 .quick input{flex:1;border:0;outline:0;background:transparent;font-size:18px;min-width:0}
 .primary{border:0;background:var(--blue);color:white;font-weight:800;border-radius:14px;padding:13px 20px}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:24px;overflow:hidden}
-.thead,.task{display:grid;grid-template-columns:38px 1fr 150px 70px 46px;align-items:center;gap:10px;padding:13px 18px}
+.thead,.task{display:grid;grid-template-columns:34px 38px 1fr 150px 70px 46px;align-items:center;gap:10px;padding:13px 18px}
 .thead{font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
 .task{border-bottom:1px solid #f1e8db}
 .task:last-child{border-bottom:0}
@@ -74,7 +74,10 @@ main{padding:28px 34px;max-width:1150px;width:100%;margin:auto}
 .tag{display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 10px;border-radius:11px;font-size:13px;text-align:center}
 .tagIcon{width:26px;height:26px;object-fit:contain}
 .work{background:var(--orange);color:#b96e28}.personal{background:var(--pink);color:#d24f73}.kid{background:#e3f1ff;color:#3d83c8}.other{background:#eee9ff;color:#7561b5}
-.star,.more{border:0;background:transparent;font-size:21px}
+.star,.more,.dragHandle{border:0;background:transparent;font-size:21px}
+.dragHandle{cursor:grab;color:#b8aa9b;touch-action:none;user-select:none;-webkit-user-select:none;font-size:22px;line-height:1}
+.task.sorting{opacity:.55}
+.task.sortable-ghost{opacity:.25}
 .empty{padding:60px 20px;text-align:center;color:#9b9187}
 .mobiletabs{display:none}
 
@@ -118,10 +121,13 @@ dialog::backdrop{background:#2b211b55}
   .quick{padding-left:14px}
   .primary{padding:12px 16px}
   .thead{display:none}
-  .task{grid-template-columns:34px 1fr 36px;padding:15px 13px}
-  .task .tag{grid-column:2;width:max-content;margin-top:4px}
-  .task .star{grid-column:3;grid-row:1}
-  .task .more{grid-column:3;grid-row:2}
+  .task{grid-template-columns:28px 34px 1fr 36px;padding:15px 13px}
+  .task .dragHandle{grid-column:1;grid-row:1 / span 2}
+  .task .check{grid-column:2;grid-row:1}
+  .task .title{grid-column:3;grid-row:1}
+  .task .tag{grid-column:3;width:max-content;margin-top:4px}
+  .task .star{grid-column:4;grid-row:1}
+  .task .more{grid-column:4;grid-row:2}
 }
 @media(max-width:390px){
   .hero{min-height:338px;padding-top:220px}
@@ -181,6 +187,7 @@ dialog::backdrop{background:#2b211b55}
 </form>
 </dialog>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
@@ -226,11 +233,63 @@ function navs(){
 }
 function esc(s=''){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
+function orderValue(t){
+  // Existing items from older versions have no sortOrder yet.
+  // Use newest-first as their temporary order until the user drags them.
+  return Number.isFinite(Number(t.sortOrder)) ? Number(t.sortOrder) : -(Number(t.createdAt)||Number(t.updatedAt)||0);
+}
+function sortedEntries(){
+  return Object.entries(todos)
+    .filter(([,t])=>match(t,filter))
+    .sort(([,a],[,b])=>{
+      // In active lists, important items always stay above normal items.
+      if(filter!=='done' && !!a.important!==!!b.important) return a.important?-1:1;
+      const d=orderValue(a)-orderValue(b);
+      if(d!==0)return d;
+      return (Number(b.createdAt)||0)-(Number(a.createdAt)||0);
+    });
+}
+function groupTopOrder(important, done=false){
+  const vals=Object.values(todos)
+    .filter(t=>!!t.done===!!done && (done || !!t.important===!!important))
+    .map(orderValue).filter(Number.isFinite);
+  return vals.length?Math.min(...vals)-1000:0;
+}
+async function saveVisibleOrder(){
+  const nodes=[...$('list').querySelectorAll('.task')];
+  const updates={};
+  // Important and normal each have their own sequence; crossing the boundary is blocked.
+  for(const important of [true,false]){
+    const ids=nodes.filter(n=>(n.dataset.important==='1')===important).map(n=>n.dataset.id);
+    ids.forEach((id,i)=>updates[`users/${uid}/todos/${id}/sortOrder`]=i*1000);
+  }
+  if(Object.keys(updates).length) await update(ref(db),updates);
+}
+function enableSorting(){
+  if(window.todoSortable){window.todoSortable.destroy();window.todoSortable=null}
+  if(!$('list').querySelector('.task') || !window.Sortable)return;
+  window.todoSortable=new Sortable($('list'),{
+    animation:170,
+    handle:'.dragHandle',
+    draggable:'.task',
+    ghostClass:'sortable-ghost',
+    chosenClass:'sorting',
+    delay:220,
+    delayOnTouchOnly:true,
+    touchStartThreshold:4,
+    onMove(evt){
+      const a=evt.dragged?.dataset.important, b=evt.related?.dataset.important;
+      return a===b; // Important items cannot be dragged into the normal section (or vice versa).
+    },
+    onEnd(){saveVisibleOrder()}
+  });
+}
 function render(){
   navs();
-  const arr=Object.entries(todos).filter(([,t])=>match(t,filter));
+  const arr=sortedEntries();
   $('list').innerHTML=arr.length?arr.map(([id,t])=>`
-    <div class="task ${t.done?'done':''}">
+    <div class="task ${t.done?'done':''}" data-id="${id}" data-important="${t.important?'1':'0'}">
+      <button class="dragHandle" type="button" aria-label="拖曳排序" title="拖曳排序">☰</button>
       <input class="check" type="checkbox" ${t.done?'checked':''} data-check="${id}">
       <div class="title">${esc(t.title)}</div>
       <span class="tag ${t.category}"><img class="tagIcon" src="${catIcons[t.category]||catIcons.all}" alt="">${labels[t.category]||'其他'}</span>
@@ -238,11 +297,17 @@ function render(){
       <button class="more" data-edit="${id}">•••</button>
     </div>`).join(''):'<div class="empty">這裡清清爽爽 ✨<br>新增一件想完成的事吧！</div>';
 
-  document.querySelectorAll('[data-check]').forEach(x=>x.onchange=()=>update(ref(db,`users/${uid}/todos/${x.dataset.check}`),{done:x.checked}));
-  document.querySelectorAll('[data-star]').forEach(x=>x.onclick=()=>{let t=todos[x.dataset.star];update(ref(db,`users/${uid}/todos/${x.dataset.star}`),{important:!t.important})});
-  document.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>openModal(x.dataset.edit))
+  document.querySelectorAll('[data-check]').forEach(x=>x.onchange=()=>{
+    const t=todos[x.dataset.check];
+    update(ref(db,`users/${uid}/todos/${x.dataset.check}`),{done:x.checked,sortOrder:groupTopOrder(!!t.important,x.checked)});
+  });
+  document.querySelectorAll('[data-star]').forEach(x=>x.onclick=()=>{
+    let t=todos[x.dataset.star], next=!t.important;
+    update(ref(db,`users/${uid}/todos/${x.dataset.star}`),{important:next,sortOrder:groupTopOrder(next,!!t.done)});
+  });
+  document.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>openModal(x.dataset.edit));
+  enableSorting();
 }
-
 $('quickBtn').onclick=()=>{let v=$('quickInput').value.trim();if(!v)return;openModal(null,v)};
 $('quickInput').onkeydown=e=>{if(e.key==='Enter')$('quickBtn').click()};
 
@@ -257,7 +322,9 @@ function openModal(id=null,prefill=''){
 
 $('form').onsubmit=async e=>{
   e.preventDefault();
-  let data={title:$('title').value.trim(),category:$('category').value,important:$('important').checked,note:$('note').value.trim(),done:editId?!!todos[editId].done:false,updatedAt:Date.now()};
+  let nextImportant=$('important').checked, oldImportant=editId?!!todos[editId].important:nextImportant;
+  let data={title:$('title').value.trim(),category:$('category').value,important:nextImportant,note:$('note').value.trim(),done:editId?!!todos[editId].done:false,updatedAt:Date.now()};
+  if(!editId || oldImportant!==nextImportant) data.sortOrder=groupTopOrder(nextImportant,data.done);
   if(!data.title)return;
   if(editId)await update(ref(db,`users/${uid}/todos/${editId}`),data);
   else{let r=push(ref(db,`users/${uid}/todos`));await set(r,{...data,createdAt:Date.now()})}
