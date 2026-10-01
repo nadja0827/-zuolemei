@@ -6,33 +6,25 @@
 <dialog id="dlg"><form class="modal" method="dialog" id="form"><h2 id="modalTitle">新增待辦</h2><div class="field"><label>待辦內容</label><input id="title" required></div><div class="row"><div class="field"><label>日期</label><input id="date" type="date"></div><div class="field"><label>時間</label><input id="time" type="time"></div></div><div class="field"><label>分類</label><select id="category"><option value="work">工作</option><option value="personal">私人</option><option value="kid">小孩</option><option value="other">其他</option></select></div><div class="field"><label><input id="important" type="checkbox"> ⭐ 重要事項</label></div><div class="field"><label>備註</label><textarea id="note" rows="3"></textarea></div><div class="actions"><button class="ghost" value="cancel">取消</button><button id="deleteBtn" type="button" class="ghost hidden">刪除</button><button class="primary" value="default">儲存</button></div></form></dialog>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { getDatabase, ref, push, set, update, remove, onValue } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js';
 const firebaseConfig={apiKey:'AIzaSyAEi1YQmtmVtWhKyf9ZOSrQYdpS19DTGm8',authDomain:'zuolemei.firebaseapp.com',databaseURL:'https://zuolemei-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'zuolemei',storageBucket:'zuolemei.firebasestorage.app',messagingSenderId:'11223352741',appId:'1:11223352741:web:d67595c4948ff1c864d44c'};
 const fb=initializeApp(firebaseConfig),auth=getAuth(fb),db=getDatabase(fb),provider=new GoogleAuthProvider();let uid=null,todos={},filter='today',editId=null,unsub=null;
 const $=id=>document.getElementById(id), fmt=d=>d.toISOString().slice(0,10), today=()=>fmt(new Date());
 $('todayDate').textContent=new Intl.DateTimeFormat('zh-TW',{month:'long',day:'numeric',weekday:'short'}).format(new Date());
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 $('loginBtn').onclick=async()=>{
   try{
-    // iPhone/iPad Safari: use redirect directly. Popup can open a blank tab.
-    if(isIOS){
-      sessionStorage.setItem('todoLoginPending','1');
-      await signInWithRedirect(auth,provider);
-      return;
-    }
+    // Use a popup on GitHub Pages. Redirect auth can lose its result on iOS Safari
+    // because the Firebase auth handler lives on a different site.
     await signInWithPopup(auth,provider);
   }catch(e){
     console.error('Google sign-in error',e);
-    const code=e?.code||'';
-    if(!isIOS && /popup-blocked|popup-closed-by-user|cancelled-popup-request|operation-not-supported/.test(code)){
-      try{ await signInWithRedirect(auth,provider); return; }catch(e2){ console.error(e2); alert('登入失敗：'+(e2.message||e2)); }
-    } else {
-      alert('登入失敗：'+(e.message||e));
-    }
+    const msg = e?.code === 'auth/popup-closed-by-user'
+      ? '登入視窗被關閉了，請再試一次。'
+      : 'Google 登入失敗：' + (e?.message || e);
+    alert(msg);
   }
 };
-getRedirectResult(auth).then(r=>{ if(r) sessionStorage.removeItem('todoLoginPending'); }).catch(e=>{ console.error('Redirect sign-in error',e); alert('Google 登入沒有完成：'+(e.message||e)); });
 $('logoutBtn').onclick=()=>signOut(auth);
 onAuthStateChanged(auth,u=>{if(!u){$('login').classList.remove('hidden');$('app').classList.add('hidden');uid=null;return} uid=u.uid;$('userName').textContent=u.displayName||u.email;$('login').classList.add('hidden');$('app').classList.remove('hidden');listen();});
 function listen(){if(unsub)unsub();unsub=onValue(ref(db,'users/'+uid+'/todos'),s=>{todos=s.val()||{};render()})}
