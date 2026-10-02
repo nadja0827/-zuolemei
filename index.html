@@ -72,6 +72,14 @@ main{padding:28px 34px;max-width:1150px;width:100%;margin:auto}
 .task.sortable-ghost{opacity:.25}
 .empty{padding:60px 20px;text-align:center;color:#9b9187}
 .mobiletabs{display:none}
+.batchBar{display:none;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 10px;padding:11px 14px;background:#fff8ed;border:1px solid var(--line);border-radius:16px}
+.batchBar.show{display:flex}
+.batchLeft{display:flex;align-items:center;gap:9px;font-weight:700;color:#6d5848}
+.batchLeft input,.selectCheck{width:21px;height:21px;accent-color:#c28f67}
+.danger{border:0;background:#d98278;color:white;font-weight:800;border-radius:13px;padding:10px 14px}
+.danger:disabled{opacity:.45;cursor:default}
+.task.doneMode{grid-template-columns:34px 38px 1fr 150px 70px 46px}
+@media(max-width:760px){.task.doneMode{grid-template-columns:34px 34px 1fr 36px}.task.doneMode .selectCheck{grid-column:1;grid-row:1 / span 2}.task.doneMode .check{grid-column:2;grid-row:1}.task.doneMode .title{grid-column:3;grid-row:1}.task.doneMode .tag{grid-column:3;grid-row:2}.task.doneMode .star{grid-column:4;grid-row:1}.task.doneMode .more{grid-column:4;grid-row:2}.batchBar{position:sticky;top:8px;z-index:5;box-shadow:0 5px 18px #76552c18}}
 
 /* dialog */
 dialog{border:0;border-radius:26px;padding:0;max-width:520px;width:calc(100% - 30px);box-shadow:0 20px 70px #0003}
@@ -137,14 +145,19 @@ dialog::backdrop{background:#2b211b55}
   </aside>
   <main>
     <section class="hero">
-      <img class="heroBanner desktop" src="hero-desktop.png?v=23" alt="TO DO LIST 做了沒？把想做的事，一件一件完成吧！">
-      <img class="heroBanner mobile" src="hero-mobile.png?v=23" alt="TO DO LIST 做了沒？把想做的事，一件一件完成吧！">
+      <img class="heroBanner desktop" src="hero-desktop.png?v=24" alt="TO DO LIST 做了沒？把想做的事，一件一件完成吧！">
+      <img class="heroBanner mobile" src="hero-mobile.png?v=24" alt="TO DO LIST 做了沒？把想做的事，一件一件完成吧！">
     </section>
 
     <div class="mobiletabs" id="mobiletabs"></div>
 
     <div class="toolbar">
       <div class="quick"><input id="quickInput" placeholder="快速新增一件事…"><button id="quickBtn" class="primary">＋ 新增</button></div>
+    </div>
+
+    <div id="batchBar" class="batchBar">
+      <label class="batchLeft"><input id="selectAllDone" type="checkbox"><span id="batchText">全選已完成</span></label>
+      <button id="batchDeleteBtn" class="danger" type="button" disabled>刪除已選 0 筆</button>
     </div>
 
     <section class="panel">
@@ -174,6 +187,7 @@ import { getDatabase, ref, push, set, update, remove, onValue } from 'https://ww
 const firebaseConfig={apiKey:'AIzaSyAEi1YQmtmVtWhKyf9ZOSrQYdpS19DTGm8',authDomain:'zuolemei.firebaseapp.com',databaseURL:'https://zuolemei-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'zuolemei',storageBucket:'zuolemei.firebasestorage.app',messagingSenderId:'11223352741',appId:'1:11223352741:web:d67595c4948ff1c864d44c'};
 const fb=initializeApp(firebaseConfig),auth=getAuth(fb),db=getDatabase(fb),provider=new GoogleAuthProvider();
 let uid=null,todos={},filter='all',editId=null,unsub=null;
+let selectedDone=new Set();
 const $=id=>document.getElementById(id);
 
 $('loginBtn').onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(e){console.error(e);alert(e?.code==='auth/popup-closed-by-user'?'登入視窗被關閉了，請再試一次。':'Google 登入失敗：'+(e?.message||e))}};
@@ -206,7 +220,7 @@ function count(k){return Object.values(todos).filter(t=>match(t,k)).length}
 function navs(){
   for(const id of ['nav','mobiletabs']){
     $(id).innerHTML=filters.map(([k,n])=>`<button data-f="${k}" class="${filter===k?'active':''}"><img class="catIcon" src="${catIcons[k]}" alt=""><span class="tabLabel">${n}</span>${id==='nav'?`<span class="badge">${count(k)}</span>`:''}</button>`).join('');
-    $(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;render()})
+    $(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;if(filter!=='done')selectedDone.clear();render()})
   }
 }
 function esc(s=''){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -265,9 +279,12 @@ function enableSorting(){
 function render(){
   navs();
   const arr=sortedEntries();
+  $('batchBar').classList.toggle('show',filter==='done');
+  const validDoneIds=new Set(arr.map(([id])=>id));
+  selectedDone=new Set([...selectedDone].filter(id=>validDoneIds.has(id)));
   $('list').innerHTML=arr.length?arr.map(([id,t])=>`
-    <div class="task ${t.done?'done':''}" data-id="${id}" data-important="${t.important?'1':'0'}">
-      <button class="dragHandle" type="button" aria-label="拖曳排序" title="拖曳排序">☰</button>
+    <div class="task ${t.done?'done':''} ${filter==='done'?'doneMode':''}" data-id="${id}" data-important="${t.important?'1':'0'}">
+      ${filter==='done'?`<input class="selectCheck" type="checkbox" data-select="${id}" ${selectedDone.has(id)?'checked':''} aria-label="選取此項目">`:`<button class="dragHandle" type="button" aria-label="拖曳排序" title="拖曳排序">☰</button>`}
       <input class="check" type="checkbox" ${t.done?'checked':''} data-check="${id}">
       <div class="title">${esc(t.title)}</div>
       <span class="tag ${t.category}"><img class="tagIcon" src="${catIcons[t.category]||catIcons.all}" alt="">${labels[t.category]||'其他'}</span>
@@ -284,8 +301,37 @@ function render(){
     update(ref(db,`users/${uid}/todos/${x.dataset.star}`),{important:next,sortOrder:groupTopOrder(next,!!t.done)});
   });
   document.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>openModal(x.dataset.edit));
-  enableSorting();
+  document.querySelectorAll('[data-select]').forEach(x=>x.onchange=()=>{
+    if(x.checked)selectedDone.add(x.dataset.select); else selectedDone.delete(x.dataset.select);
+    updateBatchBar(arr);
+  });
+  updateBatchBar(arr);
+  if(filter!=='done') enableSorting(); else if(window.todoSortable){window.todoSortable.destroy();window.todoSortable=null}
+
 }
+function updateBatchBar(arr=sortedEntries()){
+  if(filter!=='done')return;
+  const ids=arr.map(([id])=>id);
+  const selected=ids.filter(id=>selectedDone.has(id)).length;
+  $('selectAllDone').checked=ids.length>0&&selected===ids.length;
+  $('selectAllDone').indeterminate=selected>0&&selected<ids.length;
+  $('batchText').textContent=selected?`已選 ${selected} 筆`:'全選已完成';
+  $('batchDeleteBtn').textContent=`刪除已選 ${selected} 筆`;
+  $('batchDeleteBtn').disabled=selected===0;
+}
+$('selectAllDone').onchange=()=>{
+  const ids=sortedEntries().map(([id])=>id);
+  if($('selectAllDone').checked)ids.forEach(id=>selectedDone.add(id)); else ids.forEach(id=>selectedDone.delete(id));
+  render();
+};
+$('batchDeleteBtn').onclick=async()=>{
+  const ids=[...selectedDone].filter(id=>todos[id]?.done);
+  if(!ids.length)return;
+  if(!confirm(`確定要一次刪除已選的 ${ids.length} 筆已完成事項嗎？\n刪除後無法復原。`))return;
+  const changes={}; ids.forEach(id=>changes[`users/${uid}/todos/${id}`]=null);
+  await update(ref(db),changes); selectedDone.clear();
+};
+
 $('quickBtn').onclick=()=>{let v=$('quickInput').value.trim();if(!v)return;openModal(null,v)};
 $('quickInput').onkeydown=e=>{if(e.key==='Enter')$('quickBtn').click()};
 
