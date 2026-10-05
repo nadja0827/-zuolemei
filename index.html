@@ -36,7 +36,7 @@ aside{padding:24px 18px;background:#f7ead7;border-right:1px solid var(--line)}
 .mini img{width:42px;height:42px;object-fit:contain}
 .nav button{width:100%;border:0;background:transparent;padding:11px 12px;border-radius:16px;text-align:left;margin:4px 0;font-weight:700;display:flex;align-items:center;gap:9px}
 .nav button.active{background:var(--blue2);color:#397dc2}
-.catIcon{width:35px;height:35px;object-fit:contain;flex:0 0 35px}
+.catIcon{width:35px;height:35px;object-fit:contain;object-position:center;display:block;flex:0 0 35px}
 .tabLabel{flex:1}
 .badge{background:#fff;border-radius:20px;padding:2px 8px;color:#777}
 .user{margin-top:28px;font-size:13px;color:#8c8278;word-break:break-all}
@@ -108,7 +108,7 @@ dialog::backdrop{background:#2b211b55}
     padding:8px 11px;min-width:76px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:700
   }
   .mobiletabs button.active{background:var(--blue);color:white;border-color:var(--blue)}
-  .mobiletabs .catIcon{width:38px;height:38px}
+  .mobiletabs .catIcon{width:38px;height:38px;object-fit:contain;object-position:center;display:block}
   .toolbar{margin:14px 0}
   .quick{padding-left:14px}
   .primary{padding:12px 16px}
@@ -206,7 +206,7 @@ function listen(){
 
 const labels={work:'工作',personal:'私人',kid:'小孩',other:'其他'};
 const filters=[['all','全部'],['important','重要'],['work','工作'],['personal','私人'],['kid','小孩'],['done','已完成']];
-const catIcons={all:'all.png',important:'important.png',work:'work.png',personal:'personal.png',kid:'kid.png',done:'done.png'};
+const catIcons={all:'cat-all-v241.png',important:'cat-important-v241.png',work:'cat-work-v241.png',personal:'cat-personal-v241.png',kid:'cat-kid-v241.png',done:'cat-done-v241.png'};
 
 function match(t,k){
   if(k==='all')return !t.done;
@@ -332,8 +332,24 @@ $('batchDeleteBtn').onclick=async()=>{
   await update(ref(db),changes); selectedDone.clear();
 };
 
-$('quickBtn').onclick=()=>{let v=$('quickInput').value.trim();if(!v)return;openModal(null,v)};
-$('quickInput').onkeydown=e=>{if(e.key==='Enter')$('quickBtn').click()};
+function openQuickAdd(){
+  const input=$('quickInput');
+  const v=input.value.trim();
+  if(!v)return;
+  // 先讓手機輸入法結束組字並離開快速新增欄，避免 iOS 把最後一次輸入再送進彈窗。
+  input.blur();
+  input.value='';
+  setTimeout(()=>openModal(null,v),0);
+}
+$('quickBtn').onclick=openQuickAdd;
+$('quickInput').onkeydown=e=>{
+  if(e.key!=='Enter')return;
+  // 中文輸入法仍在選字／組字時，不把這次 Enter 當成送出。
+  if(e.isComposing || e.keyCode===229)return;
+  e.preventDefault();
+  e.stopPropagation();
+  openQuickAdd();
+};
 
 function openModal(id=null,prefill=''){
   editId=id;
