@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fbf6ec">
 <title>做了沒？</title>
-<link rel="apple-touch-icon" href="app-icon.png">
-<link rel="icon" href="app-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png?v=2">
+<link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png?v=2">
 <style>
 *{box-sizing:border-box}
 :root{
@@ -129,7 +129,7 @@ dialog::backdrop{background:#2b211b55}
 <body>
 <div id="login" class="login">
   <div class="loginCard">
-    <img src="app-icon.png" alt="">
+    <img src="app-icon-opt.png" alt="" decoding="async">
     <div class="sub">TO DO LIST</div><h1>做了沒？</h1>
     <p>手機、電腦，同一份待辦 ☁️</p>
     <button id="loginBtn" class="primary">使用 Google 登入</button>
@@ -139,7 +139,7 @@ dialog::backdrop{background:#2b211b55}
 
 <div id="app" class="app hidden">
   <aside>
-    <div class="mini"><img src="all.png" alt="">做了沒？</div>
+    <div class="mini"><img src="cat-all-v241-opt.png" alt="" decoding="async">做了沒？</div>
     <div class="nav" id="nav"></div>
     <div class="user"><div id="userName"></div><button id="logoutBtn" class="ghost" style="margin-top:10px">登出</button></div>
   </aside>
@@ -206,7 +206,7 @@ function listen(){
 
 const labels={work:'工作',personal:'私人',kid:'小孩',other:'其他'};
 const filters=[['all','全部'],['important','重要'],['work','工作'],['personal','私人'],['kid','小孩'],['done','已完成']];
-const catIcons={all:'cat-all-v241.png',important:'cat-important-v241.png',work:'cat-work-v241.png',personal:'cat-personal-v241.png',kid:'cat-kid-v241.png',done:'cat-done-v241.png'};
+const catIcons={all:'cat-all-v241-opt.png',important:'cat-important-v241-opt.png',work:'cat-work-v241-opt.png',personal:'cat-personal-v241-opt.png',kid:'cat-kid-v241-opt.png',done:'cat-done-v241-opt.png'};
 
 function match(t,k){
   if(k==='all')return !t.done;
@@ -219,7 +219,7 @@ function count(k){return Object.values(todos).filter(t=>match(t,k)).length}
 
 function navs(){
   for(const id of ['nav','mobiletabs']){
-    $(id).innerHTML=filters.map(([k,n])=>`<button data-f="${k}" class="${filter===k?'active':''}"><img class="catIcon" src="${catIcons[k]}" alt=""><span class="tabLabel">${n}</span>${id==='nav'?`<span class="badge">${count(k)}</span>`:''}</button>`).join('');
+    $(id).innerHTML=filters.map(([k,n])=>`<button data-f="${k}" class="${filter===k?'active':''}"><img class="catIcon" src="${catIcons[k]}" alt="" decoding="async"><span class="tabLabel">${n}</span>${id==='nav'?`<span class="badge">${count(k)}</span>`:''}</button>`).join('');
     $(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;if(filter!=='done')selectedDone.clear();render()})
   }
 }
@@ -287,7 +287,7 @@ function render(){
       ${filter==='done'?`<input class="selectCheck" type="checkbox" data-select="${id}" ${selectedDone.has(id)?'checked':''} aria-label="選取此項目">`:`<button class="dragHandle" type="button" aria-label="拖曳排序" title="拖曳排序">☰</button>`}
       <input class="check" type="checkbox" ${t.done?'checked':''} data-check="${id}">
       <div class="title">${esc(t.title)}</div>
-      <span class="tag ${t.category}"><img class="tagIcon" src="${catIcons[t.category]||catIcons.all}" alt="">${labels[t.category]||'其他'}</span>
+      <span class="tag ${t.category}"><img class="tagIcon" src="${catIcons[t.category]||catIcons.all}" alt="" decoding="async">${labels[t.category]||'其他'}</span>
       <button class="star" data-star="${id}">${t.important?'⭐':'☆'}</button>
       <button class="more" data-edit="${id}">•••</button>
     </div>`).join(''):'<div class="empty">這裡清清爽爽 ✨<br>新增一件想完成的事吧！</div>';
